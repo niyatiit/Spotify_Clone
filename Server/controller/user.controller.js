@@ -1,51 +1,35 @@
 import userModel from "../model/user.model.js";
+import musicModel from "../model/music.model.js";
+import albumModel from "../model/album.model.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 
 const register = async (req, res) => {
   try {
-    const { username, email, password, role = "user" } = req.body;
+    const { username, email, password, role = 'user' } = req.body
 
     if (!username || !email || !password) {
-      return res.json({
-        success: false,
-        message: "Please Enter All Credential",
-      });
+      return res.json({ success: false, message: 'Please enter all credentials' })
     }
 
-    const isUserAlreadyExit = await userModel.findOne({
-      $or: [{ username }, { email }],
-    });
+    const existingUser = await userModel.findOne({ $or: [{ username }, { email }] })
 
-    if (isUserAlreadyExit) {
-      return res.json({
-        success: false,
-        message: "User is Already Exists Please check the again email",
-      });
+    if (existingUser) {
+      return res.status(409).json({ success: false, message: 'User already exists' })
     }
 
-    const hash = await bcrypt.hash(password, 10);
+    const hash = await bcrypt.hash(password, 10)
 
-    const user = await userModel.create({
-      username,
-      email,
-      password: hash,
-      role,
-    });
+    const user = await userModel.create({ username, email, password: hash, role })
 
-    const token = jwt.sign(
-      {
-        id: user._id,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-    );
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET)
 
-    res.cookie("token", token);
+    res.cookie('token', token, { httpOnly: true, sameSite: 'lax' })
 
-    return res.json({ success: true, message: "User is register succesfully" });
+    return res.json({ success: true, message: 'User registered successfully', user, token })
   } catch (error) {
-    console.log("Registration Error :- ", error);
+    console.log('Registration Error :- ', error)
+    return res.status(500).json({ success: false, message: 'Registration failed' })
   }
 };
 
@@ -58,16 +42,13 @@ const login = async (req, res) => {
     });
 
     if (!user) {
-      return res.json({ success: false, message: "User is not exit" });
+      return res.status(401).json({ success: false, message: 'Wrong email or password' })
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.password)
 
     if (!isPasswordValid) {
-      return res.json({
-        success: false,
-        message: "Please enter the valid password",
-      });
+      return res.status(401).json({ success: false, message: 'Wrong email or password' })
     }
 
     const token = jwt.sign(
@@ -78,9 +59,9 @@ const login = async (req, res) => {
       process.env.JWT_SECRET,
     );
 
-    res.cookie("token", token);
+    res.cookie("token", token, { httpOnly: true, sameSite: 'lax' });
 
-    return res.json({ success: true, message: "Login successfully", user });
+    return res.json({ success: true, message: "Login successfully", user, token });
   } catch (error) {
     console.log("login Erro : ", error);
   }
@@ -95,4 +76,31 @@ const logout = async (req, res) => {
     console.log("Logout Error : ", error);
   }
 };
-export { register, login, logout };
+
+const deleteUser = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+
+    // Find the user to check if they exist
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Delete all songs by this artist
+    await musicModel.deleteMany({ artist: userId });
+
+    // Delete all albums by this artist
+    await albumModel.deleteMany({ artist: userId });
+
+    // Delete the user
+    await userModel.findByIdAndDelete(userId);
+
+    return res.json({ success: true, message: "User and all associated data deleted successfully" });
+  } catch (error) {
+    console.log("Delete User Error : ", error);
+    return res.status(500).json({ success: false, message: "Failed to delete user" });
+  }
+};
+
+export { register, login, logout, deleteUser };
