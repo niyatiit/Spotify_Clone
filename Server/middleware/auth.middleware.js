@@ -2,19 +2,12 @@ import jwt from "jsonwebtoken";
 
 const authArtist = async (req, res, next) => {
   try {
-    // Check for token in Authorization header (Bearer token) or cookies
-    let token = req.cookies?.token;
-    if (!token && req.headers.authorization) {
-      const authHeader = req.headers.authorization;
-      if (authHeader.startsWith('Bearer ')) {
-        token = authHeader.substring(7);
-      }
-    }
+    const token = req.cookies.token;
 
     if (!token) {
       return res.status(401).json({ success: false, message: "Please login first" });
     }
-
+    
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     if (decoded.role !== "artist") {
@@ -37,14 +30,7 @@ const authArtist = async (req, res, next) => {
 
 const authUser = async (req, res, next) => {
   try {
-    // Check for token in Authorization header (Bearer token) or cookies
-    let token = req.cookies?.token;
-    if (!token && req.headers.authorization) {
-      const authHeader = req.headers.authorization;
-      if (authHeader.startsWith('Bearer ')) {
-        token = authHeader.substring(7);
-      }
-    }
+    const token = req.cookies.token;
 
     if (!token) {
       return res.status(401).json({
@@ -75,14 +61,7 @@ const authUser = async (req, res, next) => {
 
 const authSelfOrAdmin = async (req, res, next) => {
   try {
-    // Check for token in Authorization header (Bearer token) or cookies
-    let token = req.cookies?.token;
-    if (!token && req.headers.authorization) {
-      const authHeader = req.headers.authorization;
-      if (authHeader.startsWith('Bearer ')) {
-        token = authHeader.substring(7);
-      }
-    }
+    const token = req.cookies.token;
 
     if (!token) {
       return res.status(401).json({

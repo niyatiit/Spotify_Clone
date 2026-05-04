@@ -9,7 +9,7 @@ const register = async (req, res) => {
     const { username, email, password, role = 'user' } = req.body
 
     if (!username || !email || !password) {
-      return res.status(400).json({ success: false, message: 'Please enter all credentials' })
+      return res.json({ success: false, message: 'Please enter all credentials' })
     }
 
     const existingUser = await userModel.findOne({ $or: [{ username }, { email }] })
@@ -26,15 +26,7 @@ const register = async (req, res) => {
 
     res.cookie('token', token, { httpOnly: true, sameSite: 'lax' })
 
-    // Return user without password
-    const userData = {
-      _id: user._id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-    }
-
-    return res.status(201).json({ success: true, message: 'User registered successfully', user: userData, token })
+    return res.json({ success: true, message: 'User registered successfully', user, token })
   } catch (error) {
     console.log('Registration Error :- ', error)
     return res.status(500).json({ success: false, message: 'Registration failed' })
@@ -44,10 +36,6 @@ const register = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { username, email, password } = req.body;
-
-    if (!password) {
-      return res.status(400).json({ success: false, message: 'Password is required' })
-    }
 
     const user = await userModel.findOne({
       $or: [{ username }, { email }],
@@ -73,28 +61,19 @@ const login = async (req, res) => {
 
     res.cookie("token", token, { httpOnly: true, sameSite: 'lax' });
 
-    // Return user without password
-    const userData = {
-      _id: user._id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-    }
-
-    return res.status(200).json({ success: true, message: "Login successfully", user: userData, token });
+    return res.json({ success: true, message: "Login successfully", user, token });
   } catch (error) {
-    console.log("login Error : ", error);
-    return res.status(500).json({ success: false, message: 'Login failed' })
+    console.log("login Erro : ", error);
   }
 };
 
 const logout = async (req, res) => {
   try {
-    res.clearCookie("token", { httpOnly: true, sameSite: 'lax' });
-    return res.status(200).json({ success: true, message: "Logout successfully" }); 
+    res.clearCookie("token");
+
+    return res.json({ success: true, message: "Logout successfully" }); 
   } catch (error) {
     console.log("Logout Error : ", error);
-    return res.status(500).json({ success: false, message: 'Logout failed' })
   }
 };
 
@@ -102,26 +81,22 @@ const deleteUser = async (req, res) => {
   try {
     const userId = req.params.userId;
 
+    // Find the user to check if they exist
     const user = await userModel.findById(userId);
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    // Delete all songs by this user
+    // Delete all songs by this artist
     await musicModel.deleteMany({ artist: userId });
 
-    // Delete all albums by this user
+    // Delete all albums by this artist
     await albumModel.deleteMany({ artist: userId });
 
     // Delete the user
     await userModel.findByIdAndDelete(userId);
 
-    res.clearCookie("token", { httpOnly: true, sameSite: 'lax' });
-
-    return res.status(200).json({ 
-      success: true, 
-      message: "User and all associated data deleted successfully" 
-    });
+    return res.json({ success: true, message: "User and all associated data deleted successfully" });
   } catch (error) {
     console.log("Delete User Error : ", error);
     return res.status(500).json({ success: false, message: "Failed to delete user" });

@@ -9,12 +9,12 @@ const ImageKitClient = new ImageKit({
     urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT || "https://ik.imagekit.io/yt"
 })
 
-const uploadFile = async (file, options = {}) => {
+const uploadFile = async (file) => {
     try {
         const result = await ImageKitClient.files.upload({
             file,
-            fileName: options.fileName || "music_" + Date.now(),
-            folder: options.folder || "yt-complete-backend/music"
+            fileName: "music_" + Date.now(),
+            folder: "yt-complete-backend/music"
         })
         return result
     } catch (error) {
