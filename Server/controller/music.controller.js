@@ -95,15 +95,18 @@ const createAlbum = async (req, res) => {
 
 const getAllMusics = async (req, res) => {
   try {
-    const musics = await musicModel.find().populate({
-      path: "artist",
-      match: { _id: { $exists: true } } // Only populate if artist still exists
-    });
+    const musics = await musicModel
+      .find()
+      .populate({
+        path: "artist",
+        select: "username email role",
+        match: { _id: { $exists: true } }
+      })
+      .sort({ createdAt: -1 });
 
-    // Filter out songs where artist is null (artist was deleted)
     const validMusics = musics.filter(music => music.artist !== null);
 
-    return res.json({
+    return res.status(200).json({
       success: true,
       message: "Get All Musics",
       musics: validMusics,
@@ -116,15 +119,23 @@ const getAllMusics = async (req, res) => {
 
 const getAllAlbums = async (req, res) => {
   try {
-    const albums = await albumModel.find().populate({
-      path: 'artist',
-      match: { _id: { $exists: true } } // Only populate if artist still exists
-    });
+    const albums = await albumModel
+      .find()
+      .populate({
+        path: 'artist',
+        select: 'username email role',
+        match: { _id: { $exists: true } }
+      })
+      .populate({ path: 'musics', populate: { path: 'artist', select: 'username email role' } })
+      .sort({ createdAt: -1 });
 
-    // Filter out albums where artist is null (artist was deleted)
     const validAlbums = albums.filter(album => album.artist !== null);
 
-    return res.json({ success: true, message: 'Get All Albums', albums: validAlbums })
+    return res.status(200).json({ 
+      success: true, 
+      message: 'Get All Albums', 
+      albums: validAlbums 
+    });
   } catch (error) {
     console.log('Get All Album Error : ', error)
     return res.status(500).json({ success: false, message: 'Failed to fetch albums' })
@@ -133,8 +144,16 @@ const getAllAlbums = async (req, res) => {
 
 const getArtistSongs = async (req, res) => {
   try {
-    const musics = await musicModel.find({ artist: req.user.id }).populate('artist', 'username email')
-    return res.json({ success: true, message: 'Get Artist Songs', musics })
+    const musics = await musicModel
+      .find({ artist: req.user.id })
+      .populate('artist', 'username email role')
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({ 
+      success: true, 
+      message: 'Get Artist Songs', 
+      musics 
+    });
   } catch (error) {
     console.log('Get Artist Songs Error : ', error)
     return res.status(500).json({ success: false, message: 'Failed to fetch artist songs' })
@@ -143,8 +162,17 @@ const getArtistSongs = async (req, res) => {
 
 const getArtistAlbums = async (req, res) => {
   try {
-    const albums = await albumModel.find({ artist: req.user.id }).populate('artist', 'username email')
-    return res.json({ success: true, message: 'Get Artist Albums', albums })
+    const albums = await albumModel
+      .find({ artist: req.user.id })
+      .populate('artist', 'username email role')
+      .populate({ path: 'musics', populate: { path: 'artist', select: 'username email role' } })
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({ 
+      success: true, 
+      message: 'Get Artist Albums', 
+      albums 
+    });
   } catch (error) {
     console.log('Get Artist Albums Error : ', error)
     return res.status(500).json({ success: false, message: 'Failed to fetch artist albums' })
@@ -157,22 +185,24 @@ const getAlubmById = async (req, res) => {
 
     const album = await albumModel
       .findById(albumId)
-      .populate("artist", "username email")
-      .populate({ path: "musics", populate: { path: "artist", select: "username email" } });
+      .populate("artist", "username email role")
+      .populate({ path: "musics", populate: { path: "artist", select: "username email role" } });
 
     if (!album) {
       return res.status(404).json({ success: false, message: "Album not found" });
     }
 
-    // Check if the album's artist still exists
     if (!album.artist) {
       return res.status(404).json({ success: false, message: "Album not available" });
     }
 
-    // Filter out songs where artist no longer exists
     album.musics = album.musics.filter(music => music.artist !== null);
 
-    return res.json({ success: true, message: "Get Album By Id", album });
+    return res.status(200).json({ 
+      success: true, 
+      message: "Get Album By Id", 
+      album 
+    });
   } catch (error) {
     console.log("Get Album By Id Error : ", error);
     return res.status(500).json({ success: false, message: "Failed to fetch album" });
